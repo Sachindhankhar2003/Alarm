@@ -1,5 +1,9 @@
 package com.example.wakeupmath.ui.setalarm
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +66,7 @@ fun SetAlarmScreen(
     onSaveClick: (hour: Int, minute: Int, label: String, difficulty: String, repeatDays: String, sound: String) -> Unit,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
     val timePickerState = rememberTimePickerState(
         initialHour = calendar.get(Calendar.HOUR_OF_DAY),
@@ -73,7 +79,24 @@ fun SetAlarmScreen(
     var selectedSound by remember { mutableStateOf("HARSH SAWTOOTH") }
     val selectedDays = remember { mutableStateListOf<Int>() }
 
-    val difficulties = listOf("TRIGONOMETRY", "ALGEBRA", "CALCULUS", "LOGARITHMS", "MIXED")
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: Exception) {
+                // ignore if not persistable
+            }
+            val fileName = getMediaFileName(context, uri) ?: "Custom Song"
+            selectedSound = "CUSTOM:$uri|$fileName"
+        }
+    }
+
+    val difficulties = listOf("EASY", "BODMAS", "TRICKY", "TRIGONOMETRY", "ALGEBRA", "CALCULUS", "LOGARITHMS", "MIXED")
     val sounds = listOf("HARSH SAWTOOTH", "SIREN PULSE", "DIGITAL BEEP", "SINE CHIME", "RADAR SWEEP")
     val daysOfWeek = listOf("M", "T", "W", "T", "F", "S", "S")
 
@@ -220,10 +243,10 @@ fun SetAlarmScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Alarm Sound Selector
+            // Alarm Sound & Custom Media Song Selector
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "ALARM SOUND",
+                    text = "ALARM SOUND / MEDIA",
                     style = androidx.compose.material3.MaterialTheme.typography.labelMedium.copy(
                         color = TextSecondary,
                         fontWeight = FontWeight.Bold,
@@ -258,6 +281,30 @@ fun SetAlarmScreen(
                                 )
                             )
                         }
+                    }
+
+                    // Custom Media Song Picker Button
+                    val isCustomSelected = selectedSound.startsWith("CUSTOM:")
+                    val customName = if (isCustomSelected) selectedSound.substringAfter("|") else "🎵 PICK CUSTOM SONG"
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isCustomSelected) AccentRed else DeepBlue)
+                            .border(
+                                width = 1.dp,
+                                color = AccentRed,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { audioPickerLauncher.launch("audio/*") }
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = if (isCustomSelected) "🎵 SONG: $customName" else "🎵 PICK CUSTOM SONG",
+                            style = androidx.compose.material3.MaterialTheme.typography.labelMedium.copy(
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
                     }
                 }
             }
@@ -342,4 +389,27 @@ fun SetAlarmScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+private fun getMediaFileName(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val index = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (index >= 0) {
+                    result = it.getString(index)
+                }
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/')
+        if (cut != null && cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result
 }

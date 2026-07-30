@@ -9,7 +9,10 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -30,6 +33,8 @@ class AlarmForegroundService : Service() {
     }
 
     private var audioTrack: AudioTrack? = null
+    private var mediaPlayer: MediaPlayer? = null
+    @Volatile
     private var isPlaying = false
 
     override fun onCreate() {
@@ -84,7 +89,7 @@ class AlarmForegroundService : Service() {
 
         startForeground(NOTIFICATION_ID, notification)
 
-        // Start the alarm sound according to selected sound style
+        // Start continuous max volume enforcement and alarm sound
         startAlarmSound(sound)
 
         // Also launch the ringing activity directly
@@ -108,10 +113,62 @@ class AlarmForegroundService : Service() {
         AlarmScheduler.schedule(this, alarm)
     }
 
+    private fun enforceMaxVolume() {
+        Thread {
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return@Thread
+            while (isPlaying) {
+                try {
+                    val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+                    audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVol, 0)
+                    val maxMusicVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, maxMusicVol, 0)
+                    Thread.sleep(500)
+                } catch (e: Exception) {
+                    break
+                }
+            }
+        }.start()
+    }
+
     private fun startAlarmSound(soundType: String) {
         if (isPlaying) return
         isPlaying = true
 
+        enforceMaxVolume()
+
+        if (soundType.startsWith("CUSTOM:") || soundType.startsWith("content://")) {
+            val uriString = if (soundType.startsWith("CUSTOM:")) {
+                soundType.substringAfter("CUSTOM:").substringBefore("|")
+            } else {
+                soundType
+            }
+            try {
+                val uri = Uri.parse(uriString)
+                val mp = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    setDataSource(applicationContext, uri)
+                    isLooping = true
+                    prepare()
+                    setVolume(1.0f, 1.0f)
+                    start()
+                }
+                mediaPlayer = mp
+                return
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Fallback to synth audio if custom media fails
+            }
+        }
+
+        playSynthSound(soundType)
+    }
+
+    private fun playSynthSound(soundType: String) {
         Thread {
             try {
                 val sampleRate = 44100
@@ -178,23 +235,9 @@ class AlarmForegroundService : Service() {
                     track.write(samples, 0, samples.size)
                     track.setLoopPoints(0, samples.size, -1) // Loop indefinitely
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        track.setVolume(0.15f)
+                        track.setVolume(1.0f)
                     }
                     track.play()
-
-                    // Launch gradual volume crescendo (fade-in from 15% to 100% over 30s)
-                    Thread {
-                        var vol = 0.15f
-                        while (isPlaying && vol < 1.0f) {
-                            try {
-                                Thread.sleep(3000)
-                                vol = (vol + 0.15f).coerceAtMost(1.0f)
-                                audioTrack?.setVolume(vol)
-                            } catch (e: Exception) {
-                                break
-                            }
-                        }
-                    }.start()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -204,6 +247,13 @@ class AlarmForegroundService : Service() {
 
     fun stopAlarm() {
         isPlaying = false
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         try {
             audioTrack?.stop()
             audioTrack?.release()
@@ -217,14 +267,7 @@ class AlarmForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        isPlaying = false
-        try {
-            audioTrack?.stop()
-            audioTrack?.release()
-            audioTrack = null
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        stopAlarm()
         instance = null
     }
 

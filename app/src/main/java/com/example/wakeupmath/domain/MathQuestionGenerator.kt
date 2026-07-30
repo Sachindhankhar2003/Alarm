@@ -21,15 +21,21 @@ object MathQuestionGenerator {
 
     fun generate(difficulty: String): MathQuestion {
         return when (difficulty.uppercase()) {
+            "EASY" -> generateEasyQuestion()
+            "BODMAS" -> generateBodmasQuestion()
+            "TRICKY" -> generateTrickyQuestion()
             "TRIGONOMETRY" -> generateTrigQuestion()
             "ALGEBRA" -> generateAlgebraQuestion()
             "CALCULUS" -> generateCalculusQuestion()
             "LOGARITHMS" -> generateLogQuestion()
             else -> { // MIXED
-                when (Random.nextInt(4)) {
-                    0 -> generateTrigQuestion()
-                    1 -> generateAlgebraQuestion()
-                    2 -> generateCalculusQuestion()
+                when (Random.nextInt(7)) {
+                    0 -> generateEasyQuestion()
+                    1 -> generateBodmasQuestion()
+                    2 -> generateTrickyQuestion()
+                    3 -> generateTrigQuestion()
+                    4 -> generateAlgebraQuestion()
+                    5 -> generateCalculusQuestion()
                     else -> generateLogQuestion()
                 }
             }
@@ -324,5 +330,125 @@ object MathQuestionGenerator {
                 MathQuestion("log₄($value) = ?", n.toDouble(), 0.01)
             }
         }
+    }
+
+    // ─── Easy Mode ────────────────────────────────────────────────
+
+    private fun generateEasyQuestion(): MathQuestion {
+        return when (Random.nextInt(6)) {
+            0 -> {
+                val a = Random.nextInt(5, 30)
+                val b = Random.nextInt(5, 30)
+                MathQuestion("$a + $b = ?", (a + b).toDouble(), 0.01)
+            }
+            1 -> {
+                val a = Random.nextInt(20, 60)
+                val b = Random.nextInt(5, 20)
+                MathQuestion("$a − $b = ?", (a - b).toDouble(), 0.01)
+            }
+            2 -> {
+                val a = Random.nextInt(2, 10)
+                val b = Random.nextInt(2, 10)
+                MathQuestion("$a × $b = ?", (a * b).toDouble(), 0.01)
+            }
+            3 -> {
+                val b = Random.nextInt(2, 10)
+                val ans = Random.nextInt(2, 10)
+                val a = b * ans
+                MathQuestion("$a / $b = ?", ans.toDouble(), 0.01)
+            }
+            4 -> {
+                val a = Random.nextInt(10, 25)
+                val b = Random.nextInt(5, 15)
+                val c = Random.nextInt(3, 12)
+                MathQuestion("$a + $b − $c = ?", (a + b - c).toDouble(), 0.01)
+            }
+            else -> {
+                val a = Random.nextInt(12, 35)
+                val b = Random.nextInt(10, 25)
+                MathQuestion("$a + $b = ?", (a + b).toDouble(), 0.01)
+            }
+        }
+    }
+
+    // ─── BODMAS Mode ──────────────────────────────────────────────
+
+    private fun generateBodmasQuestion(): MathQuestion {
+        return when (Random.nextInt(6)) {
+            0 -> {
+                // a + b × c
+                val a = Random.nextInt(2, 15)
+                val b = Random.nextInt(2, 9)
+                val c = Random.nextInt(2, 9)
+                val answer = a + (b * c)
+                MathQuestion("$a + $b × $c = ?", answer.toDouble(), 0.01)
+            }
+            1 -> {
+                // a × b - c / d
+                val cQuotient = Random.nextInt(2, 8)
+                val d = Random.nextInt(2, 6)
+                val c = cQuotient * d
+                val a = Random.nextInt(3, 8)
+                val b = Random.nextInt(3, 8)
+                val answer = (a * b) - cQuotient
+                MathQuestion("$a × $b − $c / $d = ?", answer.toDouble(), 0.01)
+            }
+            2 -> {
+                // (a + b) × c
+                val a = Random.nextInt(2, 10)
+                val b = Random.nextInt(2, 10)
+                val c = Random.nextInt(2, 7)
+                val answer = (a + b) * c
+                MathQuestion("($a + $b) × $c = ?", answer.toDouble(), 0.01)
+            }
+            3 -> {
+                // a - b / c + d
+                val bQuotient = Random.nextInt(2, 7)
+                val c = Random.nextInt(2, 6)
+                val b = bQuotient * c
+                val a = Random.nextInt(15, 40)
+                val d = Random.nextInt(3, 12)
+                val answer = a - bQuotient + d
+                MathQuestion("$a − $b / $c + $d = ?", answer.toDouble(), 0.01)
+            }
+            4 -> {
+                // a × b + c × d
+                val a = Random.nextInt(2, 6)
+                val b = Random.nextInt(3, 8)
+                val c = Random.nextInt(2, 6)
+                val d = Random.nextInt(3, 8)
+                val answer = (a * b) + (c * d)
+                MathQuestion("$a × $b + $c × $d = ?", answer.toDouble(), 0.01)
+            }
+            else -> {
+                // (a - b) × (c + d)
+                val a = Random.nextInt(8, 16)
+                val b = Random.nextInt(2, 7)
+                val c = Random.nextInt(2, 6)
+                val d = Random.nextInt(1, 5)
+                val answer = (a - b) * (c + d)
+                MathQuestion("($a − $b) × ($c + $d) = ?", answer.toDouble(), 0.01)
+            }
+        }
+    }
+
+    // ─── Tricky Mode ──────────────────────────────────────────────
+
+    private fun generateTrickyQuestion(): MathQuestion {
+        val questions = listOf(
+            MathQuestion("8 / 2 × (2 + 2) = ?", 16.0, 0.01),
+            MathQuestion("5 − 5 × 5 + 5 = ?", -15.0, 0.01),
+            MathQuestion("2 + 2 × 2 − 2 / 2 = ?", 5.0, 0.01),
+            MathQuestion("7 + 7 / 7 + 7 × 7 − 7 = ?", 50.0, 0.01),
+            MathQuestion("(-4) × (-5) − 6 / 2 = ?", 17.0, 0.01),
+            MathQuestion("(3 + 3) × 3 − 3 / 3 = ?", 17.0, 0.01),
+            MathQuestion("10 − 3 × 4 + 5 = ?", 3.0, 0.01),
+            MathQuestion("100 / 5 × 2 = ?", 40.0, 0.01),
+            MathQuestion("3 + 3 × 3 − 3 = ?", 9.0, 0.01),
+            MathQuestion("6 / 2 × (1 + 2) = ?", 9.0, 0.01),
+            MathQuestion("50 − 10 × 4 + 2² = ?", 14.0, 0.01),
+            MathQuestion("(-3) × 4 + 20 / (-2) = ?", -22.0, 0.01)
+        )
+        return questions.random()
     }
 }

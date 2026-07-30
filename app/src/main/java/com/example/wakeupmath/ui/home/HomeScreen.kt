@@ -326,8 +326,9 @@ fun AlarmItemCard(
                             .background(CardSurface)
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
+                        val soundDisplay = if (alarm.sound.startsWith("CUSTOM:")) "🎵 " + alarm.sound.substringAfter("|") else "🎵 ${alarm.sound}"
                         Text(
-                            text = "🎵 ${alarm.sound}",
+                            text = soundDisplay,
                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall.copy(
                                 color = TextSecondary,
                                 fontWeight = FontWeight.Bold

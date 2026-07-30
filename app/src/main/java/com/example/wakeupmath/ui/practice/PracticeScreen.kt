@@ -73,7 +73,7 @@ fun PracticeScreen(
     var statusMessage by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
 
-    val categories = listOf("TRIGONOMETRY", "ALGEBRA", "CALCULUS", "LOGARITHMS", "MIXED")
+    val categories = listOf("EASY", "BODMAS", "TRICKY", "TRIGONOMETRY", "ALGEBRA", "CALCULUS", "LOGARITHMS", "MIXED")
 
     Scaffold(
         containerColor = Charcoal

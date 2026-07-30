@@ -88,58 +88,43 @@ class RingingViewModel(difficulty: String = "MIXED") : ViewModel() {
         if (state.isCorrect) return
         val input = state.userInput.toDoubleOrNull()
         if (input == null) {
-            val newWrong = state.wrongAttemptsCount + 1
-            val penaltyTarget = if (newWrong >= 3) 3 else state.requiredQuestionsToSolve
             _uiState.value = state.copy(
                 isWrongAnswer = true,
                 shakeCounter = state.shakeCounter + 1,
-                wrongAttemptsCount = newWrong,
-                requiredQuestionsToSolve = penaltyTarget,
+                wrongAttemptsCount = state.wrongAttemptsCount + 1,
             )
             return
         }
         if (MathQuestionGenerator.checkAnswer(state.question, input)) {
             val newSolved = state.questionsSolved + 1
-            if (newSolved >= state.requiredQuestionsToSolve) {
-                val elapsedSec = ((System.currentTimeMillis() - startTimeMs) / 1000).coerceAtLeast(1)
-                _uiState.value = state.copy(
-                    isCorrect = true,
-                    isWrongAnswer = false,
-                    questionsSolved = newSolved,
-                    solveTimeSeconds = elapsedSec
-                )
-                // Save stat to Room database
-                viewModelScope.launch {
-                    try {
-                        val db = AlarmDatabase.getInstance(context)
-                        db.wakeStatDao().insertStat(
-                            WakeStatEntity(
-                                solveTimeSeconds = elapsedSec,
-                                difficulty = state.difficulty,
-                                success = true
-                            )
+            val elapsedSec = ((System.currentTimeMillis() - startTimeMs) / 1000).coerceAtLeast(1)
+            _uiState.value = state.copy(
+                isCorrect = true,
+                isWrongAnswer = false,
+                questionsSolved = newSolved,
+                solveTimeSeconds = elapsedSec
+            )
+            // Save stat to Room database
+            viewModelScope.launch {
+                try {
+                    val db = AlarmDatabase.getInstance(context)
+                    db.wakeStatDao().insertStat(
+                        WakeStatEntity(
+                            solveTimeSeconds = elapsedSec,
+                            difficulty = state.difficulty,
+                            success = true
                         )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-            } else {
-                // Advance to next penalty math question
-                _uiState.value = state.copy(
-                    question = MathQuestionGenerator.generate(state.difficulty),
-                    userInput = "",
-                    isWrongAnswer = false,
-                    questionsSolved = newSolved
-                )
             }
         } else {
             val newWrong = state.wrongAttemptsCount + 1
-            val penaltyTarget = if (newWrong >= 3) 3 else state.requiredQuestionsToSolve
             _uiState.value = state.copy(
                 isWrongAnswer = true,
                 shakeCounter = state.shakeCounter + 1,
                 wrongAttemptsCount = newWrong,
-                requiredQuestionsToSolve = penaltyTarget,
                 userInput = "",
             )
         }

@@ -108,6 +108,22 @@ class RingingActivity : ComponentActivity(), SensorEventListener {
         // Do nothing — user must solve the math problem
     }
 
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        when (event.keyCode) {
+            android.view.KeyEvent.KEYCODE_VOLUME_DOWN,
+            android.view.KeyEvent.KEYCODE_VOLUME_UP,
+            android.view.KeyEvent.KEYCODE_VOLUME_MUTE -> {
+                val audioManager = getSystemService(AUDIO_SERVICE) as? android.media.AudioManager
+                audioManager?.let {
+                    val maxVol = it.getStreamMaxVolume(android.media.AudioManager.STREAM_ALARM)
+                    it.setStreamVolume(android.media.AudioManager.STREAM_ALARM, maxVol, 0)
+                }
+                return true // Block volume down key press!
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         // If user tries to leave (home button), bring activity back
